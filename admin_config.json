@@ -1,0 +1,24 @@
+{
+    "roles": {
+        "admin": {
+            "password": "123",
+            "role": "Admin"
+        },
+        "viewer": {
+            "password": "qwe",
+            "role": "Viewer"
+        },
+        "owner": {
+            "password": "root",
+            "role": "Owner"
+        }
+    },
+    "pc_types": {
+        "Standard": 100,
+        "VIP": 600
+    },
+    "promo_codes": {
+        "RACE10": 10,
+        "WINTER20": 20
+    }
+}

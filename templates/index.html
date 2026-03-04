@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sim-Racing Hub Professional</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #858585; color: #ffffff; font-family: 'Inter', sans-serif; min-height: 100vh; }
+        .pc-card { 
+            background: #1a1a1a; border: 1px solid #333; border-radius: 12px;
+            padding: 20px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+        }
+        .pc-card:hover { transform: scale(1.02); }
+        .status-text { font-weight: 800; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem; }
+        .text-racing { color: #00ff66 !important; text-shadow: 0 0 10px rgba(0,255,102,0.3); }
+        .text-free { color: #666 !important; }
+        .text-paused { color: #ffcc00 !important; }
+        .timer-big { font-size: 2.8rem; font-weight: 900; color: #fff; line-height: 1; margin: 10px 0; }
+        .badge-vip { background: #ffc107; color: #000; font-weight: bold; }
+        .login-box { max-width: 380px; margin: 100px auto; background: #161616; padding: 40px; border-radius: 20px; border: 1px solid #333; }
+        .conn-badge { font-size: 0.7rem; color: #888; background: #222; padding: 3px 8px; border-radius: 5px; }
+    </style>
+</head>
+<body class="p-4">
+    {% if login_mode %}
+        {% else %}
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h1 class="h3 mb-0 fw-bold">🏎️ Sim-Racing <span class="text-primary">Hub</span></h1>
+                <p class="text-muted small mb-0">Система керування клубом v2.1</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-success btn-sm px-3" onclick="showAddPCModal()">+ ДОДАТИ ПК</button>
+                {% if role == 'Owner' %}
+                <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#ownerModal">⚙️ НАЛАШТУВАННЯ</button>
+                {% endif %}
+                <a href="/logout" class="btn btn-outline-danger btn-sm">Вихід</a>
+            </div>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 row-cols-xl-5 g-4">
+            {% for id, pc in pcs.items() %}
+            <div class="col">
+                <div class="card pc-card h-100 border-0">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="conn-badge">{{ '🌐 Network' if pc.conn_mode == 'Network' else '🔌 Local' }}</span>
+                        {% if role in ['Admin', 'Owner'] %}
+                        <div class="dropdown">
+                            <button class="btn btn-link text-muted p-0" data-bs-toggle="dropdown">⋮</button>
+                            <ul class="dropdown-menu dropdown-menu-dark">
+                                <li><a class="dropdown-item small" href="#" onclick="editPC('{{id}}', '{{pc.type}}', '{{pc.conn_mode}}')">Редагувати</a></li>
+                                <li><a class="dropdown-item small text-danger" href="#" onclick="deletePC('{{id}}')">Видалити</a></li>
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-end mb-3">
+                        <h4 class="mb-0 fw-bold">{{ id }}</h4>
+                        <span class="badge {{ 'badge-vip' if pc.type == 'VIP' else 'bg-secondary' }}">{{ pc.type }}</span>
+                    </div>
+
+                    <div class="text-center my-3">
+                        <div class="timer-big">{{ pc.time_left }}</div>
+                        <div class="status-text {{ 'text-paused' if pc.paused else 'text-racing' if pc.time_left > 0 else 'text-free' }}">
+                            {{ 'Пауза' if pc.paused else 'У грі' if pc.time_left > 0 else 'Вільний' }}
+                        </div>
+                    </div>
+
+                    <div class="bg-black bg-opacity-50 p-2 rounded mb-3 small text-white-50">
+                        <div>Драйвер: <b class="text-white">{{ pc.driver or '---' }}</b></div>
+                        <div>Гра: <b class="text-white">{{ pc.game or '---' }}</b></div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary btn-sm fw-bold" onclick="openControlModal('{{id}}')">КЕРУВАТИ</button>
+                        <div class="btn-group">
+                            <button class="btn btn-outline-warning btn-sm" onclick="action('{{id}}', 'pause')">⏸</button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="showSummary('{{id}}')">⏹ СТОП</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="modal fade" id="controlModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark border-secondary text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="controlTitle">Керування ПК</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="ctrl_pc_id">
+                    <div class="mb-3">
+                        <label class="small text-muted">Драйвер</label>
+                        <input id="ctrl_driver" class="form-control bg-black text-white border-secondary">
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-muted">Гра</label>
+                        <select id="ctrl_game" class="form-select bg-black text-white border-secondary">
+                            <option value="iRacing">iRacing</option>
+                            <option value="Assetto Corsa">Assetto Corsa</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-muted">Додати час (хвилини)</label>
+                        <input type="number" id="ctrl_mins" class="form-control bg-black text-white border-secondary" value="60">
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-success w-100 fw-bold" onclick="submitSession()">ЗАПУСТИТИ / ОНОВИТИ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="summaryModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-info bg-dark text-white shadow-lg">
+                <div class="modal-body text-center p-5">
+                    <h1 class="display-1">🏁</h1>
+                    <h3 class="fw-bold mb-4">СЕСІЮ ЗАВЕРШЕНО</h3>
+                    <div class="bg-black bg-opacity-50 p-4 rounded text-start mb-4">
+                        <div class="d-flex justify-content-between mb-2"><span>ПК:</span><b id="sum_pc"></b></div>
+                        <div class="d-flex justify-content-between mb-2"><span>Драйвер:</span><b id="sum_driver"></b></div>
+                        <div class="d-flex justify-content-between mb-2"><span>Гра:</span><b id="sum_game"></b></div>
+                        <hr>
+                        <div class="d-flex justify-content-between text-info"><span>ДО ОПЛАТИ:</span><h4 class="mb-0 fw-bold" id="sum_total"></h4></div>
+                    </div>
+                    <button class="btn btn-info w-100 py-3 fw-bold" onclick="finalClose()">ПРИЙНЯТИ ТА ЗАКРИТИ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ctrlModal = new bootstrap.Modal(document.getElementById('controlModal'));
+        const sumModal = new bootstrap.Modal(document.getElementById('summaryModal'));
+
+        function openControlModal(pcId) {
+            document.getElementById('ctrl_pc_id').value = pcId;
+            document.getElementById('controlTitle').innerText = "Керування " + pcId;
+            ctrlModal.show();
+        }
+
+        function submitSession() {
+            const pcId = document.getElementById('ctrl_pc_id').value;
+            const data = {
+                pc_id: pcId,
+                driver: document.getElementById('ctrl_driver').value,
+                game: document.getElementById('ctrl_game').value,
+                add_time: document.getElementById('ctrl_mins').value
+            };
+            fetch('/api/update_pc', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            }).then(() => location.reload());
+        }
+
+        function showSummary(pcId) {
+            fetch('/api/get_session_summary', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({pc_id: pcId})
+            })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('sum_pc').innerText = pcId;
+                document.getElementById('sum_driver').innerText = data.driver || '---';
+                document.getElementById('sum_game').innerText = data.game || '---';
+                document.getElementById('sum_total').innerText = data.rate + " ₴"; // Тут можна додати множення на час
+                window.lastStopId = pcId;
+                sumModal.show();
+            });
+        }
+
+        function finalClose() {
+            action(window.lastStopId, 'stop');
+            sumModal.hide();
+        }
+
+        function action(id, act) {
+            fetch('/api/update_pc', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({pc_id: id, action: act})
+            }).then(() => location.reload());
+        }
+        
+        // (додайте аналогічні функції для видалення та редагування ПК)
+    </script>
+    {% endif %}
+</body>
+</html>

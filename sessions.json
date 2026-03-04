@@ -1,0 +1,22 @@
+{
+    "1": {
+        "id": "SIM-1772641307",
+        "status": "Free",
+        "game": "None",
+        "time_left": 0,
+        "paused": false,
+        "driver": "",
+        "type": "Standard",
+        "conn_mode": "Local"
+    },
+    "2": {
+        "id": "SIM-1772641400",
+        "status": "Free",
+        "game": "None",
+        "time_left": 0,
+        "paused": false,
+        "driver": "",
+        "type": "VIP",
+        "conn_mode": "Network"
+    }
+}
